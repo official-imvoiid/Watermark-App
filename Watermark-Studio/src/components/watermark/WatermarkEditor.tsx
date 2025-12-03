@@ -21,7 +21,6 @@ export const WatermarkEditor = () => {
   const watermarkImageInputRef = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<ImageCanvasRef>(null);
 
-  // Dynamic font loading
   const { fonts: customFonts, loading: fontsLoading } = useDynamicFonts();
 
   const currentImage = images[currentIndex] || null;
@@ -181,7 +180,6 @@ export const WatermarkEditor = () => {
     e.target.value = '';
   }, [selectedWatermarkIndex, handleUpdateWatermark]);
 
-  // Render a single image with watermarks to canvas
   const renderImageWithWatermarks = async (
     imageUrl: string,
     watermarks: WatermarkSettings[]
@@ -191,6 +189,31 @@ export const WatermarkEditor = () => {
       img.crossOrigin = 'anonymous';
       
       img.onload = async () => {
+        // Get the current canvas to determine the scale and positioning
+        const fabricCanvas = canvasRef.current?.getCanvas();
+        if (!fabricCanvas) {
+          reject(new Error('Canvas not available'));
+          return;
+        }
+
+        const canvasWidth = fabricCanvas.width || 800;
+        const canvasHeight = fabricCanvas.height || 600;
+
+        // Calculate the scale factor used in the canvas preview (from ImageCanvas.tsx)
+        const previewScale = Math.min(
+          (canvasWidth * 0.9) / img.width,
+          (canvasHeight * 0.9) / img.height
+        );
+
+        // Calculate the preview image dimensions
+        const previewWidth = img.width * previewScale;
+        const previewHeight = img.height * previewScale;
+
+        // Calculate the offset (center position) of the preview image on canvas
+        const previewLeft = canvasWidth / 2;
+        const previewTop = canvasHeight / 2;
+
+        // Create export canvas with original image dimensions
         const canvas = document.createElement('canvas');
         canvas.width = img.width;
         canvas.height = img.height;
@@ -204,29 +227,43 @@ export const WatermarkEditor = () => {
         // Draw the base image
         ctx.drawImage(img, 0, 0);
 
-        // Draw watermarks
+        // Calculate scale factor from preview to original
+        const scaleToOriginal = 1 / previewScale;
+
+        // Draw watermarks with proper scaling and positioning
         for (const watermark of watermarks) {
-          const x = (watermark.x / 100) * canvas.width;
-          const y = (watermark.y / 100) * canvas.height;
+          // Convert percentage to canvas pixels
+          const canvasX = (watermark.x / 100) * canvasWidth;
+          const canvasY = (watermark.y / 100) * canvasHeight;
+
+          // Calculate position relative to preview image center
+          const relativeX = canvasX - previewLeft;
+          const relativeY = canvasY - previewTop;
+
+          // Scale relative position to original image
+          const originalX = (relativeX * scaleToOriginal) + (img.width / 2);
+          const originalY = (relativeY * scaleToOriginal) + (img.height / 2);
 
           ctx.save();
           ctx.globalAlpha = watermark.opacity;
-          ctx.translate(x, y);
+          ctx.translate(originalX, originalY);
           ctx.rotate((watermark.rotation * Math.PI) / 180);
 
           if (watermark.type === 'text') {
-            ctx.font = `${watermark.fontSize}px "${watermark.fontFamily}"`;
+            // Scale font size from preview to original image size
+            const scaledFontSize = watermark.fontSize * scaleToOriginal;
+            ctx.font = `${scaledFontSize}px "${watermark.fontFamily}"`;
             ctx.fillStyle = watermark.color;
             ctx.textAlign = watermark.alignment;
             ctx.textBaseline = 'middle';
             ctx.fillText(watermark.text, 0, 0);
           } else if (watermark.type === 'image' && watermark.imageUrl) {
-            // Load and draw watermark image
             const wmImg = new Image();
             wmImg.crossOrigin = 'anonymous';
             await new Promise<void>((res) => {
               wmImg.onload = () => {
-                const scale = watermark.fontSize / 100;
+                // Scale watermark image from preview to original
+                const scale = (watermark.fontSize / 100) * scaleToOriginal;
                 const w = wmImg.width * scale;
                 const h = wmImg.height * scale;
                 ctx.drawImage(wmImg, -w / 2, -h / 2, w, h);
@@ -282,7 +319,6 @@ export const WatermarkEditor = () => {
         try {
           const blob = await renderImageWithWatermarks(image.url, watermarks);
           
-          // Get filename without extension and add _watermarked
           const nameParts = image.name.split('.');
           const ext = nameParts.pop() || 'png';
           const baseName = nameParts.join('.');
@@ -318,7 +354,6 @@ export const WatermarkEditor = () => {
 
   return (
     <div className="h-screen flex flex-col bg-background p-4 gap-4">
-      {/* Header */}
       <header className="flex items-center gap-3">
         <div className="p-2 rounded-lg bg-primary/10 border border-primary/20">
           <Droplet className="h-6 w-6 text-primary" />
@@ -329,9 +364,7 @@ export const WatermarkEditor = () => {
         </div>
       </header>
 
-      {/* Main Content */}
       <div className="flex-1 flex gap-4 min-h-0">
-        {/* Canvas */}
         <div className="flex-1 flex flex-col gap-4 min-w-0">
           <ImageCanvas
             ref={canvasRef}
@@ -353,7 +386,6 @@ export const WatermarkEditor = () => {
           />
         </div>
 
-        {/* Control Panel */}
         <ControlPanel
           watermarks={currentWatermarks}
           selectedIndex={selectedWatermarkIndex}
@@ -368,7 +400,6 @@ export const WatermarkEditor = () => {
         />
       </div>
 
-      {/* Hidden Inputs */}
       <input
         ref={folderInputRef}
         type="file"
