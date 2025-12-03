@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Image to Icon Converter</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      min-height: 100vh;
+      color: #e0e0e0;
+      padding: 20px;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 10px;
+      color: #00d4ff;
+      font-size: 2rem;
+    }
+    .subtitle {
+      text-align: center;
+      color: #888;
+      margin-bottom: 30px;
+    }
+    .drop-zone {
+      border: 3px dashed #00d4ff;
+      border-radius: 16px;
+      padding: 60px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s;
+      background: rgba(0, 212, 255, 0.05);
+      margin-bottom: 30px;
+    }
+    .drop-zone:hover, .drop-zone.dragover {
+      background: rgba(0, 212, 255, 0.15);
+      border-color: #00ffcc;
+    }
+    .drop-zone p { font-size: 1.1rem; color: #aaa; }
+    .drop-zone input { display: none; }
+    
+    .preview-section {
+      display: none;
+      gap: 30px;
+      margin-bottom: 30px;
+    }
+    .preview-section.active { display: grid; grid-template-columns: 1fr 1fr; }
+    @media (max-width: 600px) { .preview-section.active { grid-template-columns: 1fr; } }
+    
+    .panel {
+      background: rgba(255,255,255,0.05);
+      border-radius: 12px;
+      padding: 20px;
+    }
+    .panel h3 {
+      margin-bottom: 15px;
+      color: #00d4ff;
+      font-size: 1rem;
+    }
+    .original-preview {
+      max-width: 100%;
+      max-height: 300px;
+      border-radius: 8px;
+      display: block;
+      margin: 0 auto;
+    }
+    .info { color: #888; font-size: 0.85rem; margin-top: 10px; text-align: center; }
+    
+    .size-options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .size-btn {
+      padding: 10px 16px;
+      border: 2px solid #444;
+      background: transparent;
+      color: #e0e0e0;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 0.9rem;
+    }
+    .size-btn:hover { border-color: #00d4ff; }
+    .size-btn.active { background: #00d4ff; color: #000; border-color: #00d4ff; }
+    
+    .custom-size {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .custom-size input {
+      width: 80px;
+      padding: 10px;
+      border: 2px solid #444;
+      background: rgba(255,255,255,0.05);
+      color: #e0e0e0;
+      border-radius: 8px;
+      font-size: 0.9rem;
+    }
+    .custom-size input:focus { outline: none; border-color: #00d4ff; }
+    .custom-size label { color: #888; }
+    
+    .quality-section { margin-bottom: 20px; }
+    .quality-section label { display: block; margin-bottom: 8px; color: #888; }
+    .quality-slider {
+      width: 100%;
+      height: 6px;
+      -webkit-appearance: none;
+      background: #333;
+      border-radius: 3px;
+      outline: none;
+    }
+    .quality-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      background: #00d4ff;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+    
+    .output-preview {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 150px;
+      background: repeating-conic-gradient(#333 0% 25%, #222 0% 50%) 50% / 20px 20px;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 15px;
+    }
+    .output-preview img {
+      max-width: 100%;
+      image-rendering: -webkit-optimize-contrast;
+    }
+    
+    .download-btn {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, #00d4ff, #00ffcc);
+      border: none;
+      border-radius: 8px;
+      color: #000;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .download-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(0, 212, 255, 0.3);
+    }
+    .download-btn:disabled {
+      background: #444;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+    
+    .format-select {
+      width: 100%;
+      padding: 10px;
+      border: 2px solid #444;
+      background: rgba(255,255,255,0.05);
+      color: #e0e0e0;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      font-size: 0.9rem;
+    }
+    .format-select:focus { outline: none; border-color: #00d4ff; }
+    
+    .algorithm-info {
+      background: rgba(0, 212, 255, 0.1);
+      border-left: 3px solid #00d4ff;
+      padding: 12px;
+      border-radius: 0 8px 8px 0;
+      margin-top: 15px;
+      font-size: 0.85rem;
+      color: #aaa;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🖼️ Image to Icon Converter</h1>
+    <p class="subtitle">High-quality downscaling for watermarks & logos</p>
+    
+    <div class="drop-zone" id="dropZone">
+      <p>📁 Drop image here or click to browse</p>
+      <input type="file" id="fileInput" accept="image/*">
+    </div>
+    
+    <div class="preview-section" id="previewSection">
+      <div class="panel">
+        <h3>Original Image</h3>
+        <img id="originalPreview" class="original-preview" alt="Original">
+        <p class="info" id="originalInfo"></p>
+      </div>
+      
+      <div class="panel">
+        <h3>Output Settings</h3>
+        
+        <div class="size-options" id="sizeOptions">
+          <button class="size-btn" data-size="16">16px</button>
+          <button class="size-btn" data-size="32">32px</button>
+          <button class="size-btn" data-size="48">48px</button>
+          <button class="size-btn" data-size="64">64px</button>
+          <button class="size-btn active" data-size="128">128px</button>
+          <button class="size-btn" data-size="256">256px</button>
+          <button class="size-btn" data-size="512">512px</button>
+        </div>
+        
+        <div class="custom-size">
+          <label>Custom:</label>
+          <input type="number" id="customWidth" placeholder="W" min="1" max="4096">
+          <span>×</span>
+          <input type="number" id="customHeight" placeholder="H" min="1" max="4096">
+          <label><input type="checkbox" id="lockRatio" checked> 🔒</label>
+        </div>
+        
+        <div class="quality-section">
+          <label>Quality: <span id="qualityValue">100</span>%</label>
+          <input type="range" class="quality-slider" id="qualitySlider" min="10" max="100" value="100">
+        </div>
+        
+        <select class="format-select" id="formatSelect">
+          <option value="png">PNG (Lossless, transparent)</option>
+          <option value="webp">WebP (Best compression)</option>
+          <option value="jpeg">JPEG (Smaller size)</option>
+        </select>
+        
+        <div class="output-preview" id="outputPreview">
+          <span style="color:#666">Preview appears here</span>
+        </div>
+        
+        <p class="info" id="outputInfo"></p>
+        
+        <button class="download-btn" id="downloadBtn" disabled>Download Icon</button>
+        
+        <div class="algorithm-info">
+          💡 Uses multi-step Lanczos-like downscaling for sharp, crisp results without quality loss at small sizes.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // High-quality image resizing with multi-step downscaling
+    class ImageResizer {
+      constructor() {
+        this.originalImage = null;
+        this.originalWidth = 0;
+        this.originalHeight = 0;
+      }
+
+      loadImage(file) {
+        return new Promise((resolve, reject) => {
+          const img = new Image();
+          img.onload = () => {
+            this.originalImage = img;
+            this.originalWidth = img.naturalWidth;
+            this.originalHeight = img.naturalHeight;
+            resolve(img);
+          };
+          img.onerror = reject;
+          img.src = URL.createObjectURL(file);
+        });
+      }
+
+      // Multi-step downscaling for better quality
+      resize(targetWidth, targetHeight, quality = 1, format = 'png') {
+        if (!this.originalImage) return null;
+
+        // For extreme downscaling, use multiple steps
+        const stepRatio = 0.5;
+        let currentCanvas = document.createElement('canvas');
+        let currentCtx = currentCanvas.getContext('2d');
+        
+        currentCanvas.width = this.originalWidth;
+        currentCanvas.height = this.originalHeight;
+        currentCtx.imageSmoothingEnabled = true;
+        currentCtx.imageSmoothingQuality = 'high';
+        currentCtx.drawImage(this.originalImage, 0, 0);
+
+        let currentWidth = this.originalWidth;
+        let currentHeight = this.originalHeight;
+
+        // Step down gradually for better quality
+        while (currentWidth * stepRatio > targetWidth && currentHeight * stepRatio > targetHeight) {
+          const newWidth = Math.round(currentWidth * stepRatio);
+          const newHeight = Math.round(currentHeight * stepRatio);
+          
+          const stepCanvas = document.createElement('canvas');
+          const stepCtx = stepCanvas.getContext('2d');
+          stepCanvas.width = newWidth;
+          stepCanvas.height = newHeight;
+          stepCtx.imageSmoothingEnabled = true;
+          stepCtx.imageSmoothingQuality = 'high';
+          stepCtx.drawImage(currentCanvas, 0, 0, newWidth, newHeight);
+          
+          currentCanvas = stepCanvas;
+          currentWidth = newWidth;
+          currentHeight = newHeight;
+        }
+
+        // Final resize to target dimensions
+        const finalCanvas = document.createElement('canvas');
+        const finalCtx = finalCanvas.getContext('2d');
+        finalCanvas.width = targetWidth;
+        finalCanvas.height = targetHeight;
+        finalCtx.imageSmoothingEnabled = true;
+        finalCtx.imageSmoothingQuality = 'high';
+        finalCtx.drawImage(currentCanvas, 0, 0, targetWidth, targetHeight);
+
+        // Apply sharpening for small icons
+        if (targetWidth <= 64 || targetHeight <= 64) {
+          this.applySharpen(finalCtx, targetWidth, targetHeight);
+        }
+
+        const mimeType = format === 'png' ? 'image/png' : 
+                        format === 'webp' ? 'image/webp' : 'image/jpeg';
+        
+        return {
+          dataUrl: finalCanvas.toDataURL(mimeType, quality),
+          canvas: finalCanvas,
+          blob: null
+        };
+      }
+
+      // Light sharpening for crisp icons
+      applySharpen(ctx, width, height) {
+        const imageData = ctx.getImageData(0, 0, width, height);
+        const data = imageData.data;
+        const copy = new Uint8ClampedArray(data);
+        
+        const kernel = [
+          0, -0.5, 0,
+          -0.5, 3, -0.5,
+          0, -0.5, 0
+        ];
+        
+        for (let y = 1; y < height - 1; y++) {
+          for (let x = 1; x < width - 1; x++) {
+            for (let c = 0; c < 3; c++) {
+              let sum = 0;
+              for (let ky = -1; ky <= 1; ky++) {
+                for (let kx = -1; kx <= 1; kx++) {
+                  const idx = ((y + ky) * width + (x + kx)) * 4 + c;
+                  sum += copy[idx] * kernel[(ky + 1) * 3 + (kx + 1)];
+                }
+              }
+              const idx = (y * width + x) * 4 + c;
+              data[idx] = Math.max(0, Math.min(255, sum));
+            }
+          }
+        }
+        
+        ctx.putImageData(imageData, 0, 0);
+      }
+
+      getAspectRatio() {
+        return this.originalWidth / this.originalHeight;
+      }
+    }
+
+    // UI Controller
+    const resizer = new ImageResizer();
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const previewSection = document.getElementById('previewSection');
+    const originalPreview = document.getElementById('originalPreview');
+    const originalInfo = document.getElementById('originalInfo');
+    const outputPreview = document.getElementById('outputPreview');
+    const outputInfo = document.getElementById('outputInfo');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const sizeOptions = document.getElementById('sizeOptions');
+    const customWidth = document.getElementById('customWidth');
+    const customHeight = document.getElementById('customHeight');
+    const lockRatio = document.getElementById('lockRatio');
+    const qualitySlider = document.getElementById('qualitySlider');
+    const qualityValue = document.getElementById('qualityValue');
+    const formatSelect = document.getElementById('formatSelect');
+
+    let currentSize = 128;
+    let currentDataUrl = null;
+
+    // Event Listeners
+    dropZone.addEventListener('click', () => fileInput.click());
+    dropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropZone.classList.add('dragover');
+    });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('dragover');
+      const file = e.dataTransfer.files[0];
+      if (file && file.type.startsWith('image/')) handleFile(file);
+    });
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) handleFile(file);
+    });
+
+    sizeOptions.addEventListener('click', (e) => {
+      if (e.target.classList.contains('size-btn')) {
+        document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('active'));
+        e.target.classList.add('active');
+        currentSize = parseInt(e.target.dataset.size);
+        const ratio = resizer.getAspectRatio();
+        customWidth.value = currentSize;
+        customHeight.value = Math.round(currentSize / ratio);
+        updatePreview();
+      }
+    });
+
+    customWidth.addEventListener('input', () => {
+      if (lockRatio.checked && resizer.originalImage) {
+        customHeight.value = Math.round(customWidth.value / resizer.getAspectRatio());
+      }
+      document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('active'));
+      updatePreview();
+    });
+
+    customHeight.addEventListener('input', () => {
+      if (lockRatio.checked && resizer.originalImage) {
+        customWidth.value = Math.round(customHeight.value * resizer.getAspectRatio());
+      }
+      document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('active'));
+      updatePreview();
+    });
+
+    qualitySlider.addEventListener('input', () => {
+      qualityValue.textContent = qualitySlider.value;
+      updatePreview();
+    });
+
+    formatSelect.addEventListener('change', updatePreview);
+
+    downloadBtn.addEventListener('click', () => {
+      if (!currentDataUrl) return;
+      const link = document.createElement('a');
+      const format = formatSelect.value;
+      link.download = `icon_${customWidth.value}x${customHeight.value}.${format}`;
+      link.href = currentDataUrl;
+      link.click();
+    });
+
+    async function handleFile(file) {
+      try {
+        await resizer.loadImage(file);
+        originalPreview.src = URL.createObjectURL(file);
+        originalInfo.textContent = `${resizer.originalWidth} × ${resizer.originalHeight} px | ${(file.size / 1024).toFixed(1)} KB`;
+        previewSection.classList.add('active');
+        
+        const ratio = resizer.getAspectRatio();
+        customWidth.value = currentSize;
+        customHeight.value = Math.round(currentSize / ratio);
+        
+        updatePreview();
+      } catch (err) {
+        alert('Failed to load image');
+      }
+    }
+
+    function updatePreview() {
+      const width = parseInt(customWidth.value) || 128;
+      const height = parseInt(customHeight.value) || 128;
+      const quality = qualitySlider.value / 100;
+      const format = formatSelect.value;
+
+      const result = resizer.resize(width, height, quality, format);
+      if (result) {
+        currentDataUrl = result.dataUrl;
+        outputPreview.innerHTML = `<img src="${result.dataUrl}" style="image-rendering: pixelated;">`;
+        
+        // Calculate approximate size
+        const base64Length = result.dataUrl.split(',')[1]?.length || 0;
+        const sizeKB = (base64Length * 0.75 / 1024).toFixed(1);
+        outputInfo.textContent = `${width} × ${height} px | ~${sizeKB} KB`;
+        
+        downloadBtn.disabled = false;
+      }
+    }
+  </script>
+</body>
+</html>
